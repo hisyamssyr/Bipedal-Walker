@@ -56,6 +56,7 @@ GAMMA = 0.99
 ALPHA = 0.1     # Diperbesar agar tabel Q lebih cepat update
 EPSILON_DECAY = 0.004
 HIGHSCORE = -1000
+MAX_STEPS = 1000 # Batas langkah per episode agar agen tidak stuck menyeimbangkan diri
 
 # Inisialisasi Q-Table
 # Q-Table berbentuk dictionary dengan key = tuple State, 
@@ -92,8 +93,10 @@ def runAlgorithmStep(env, episode, qTable, doRender):
     total_reward = 0
     # Epsilon menurun bertahap (Decay) seiring bertambahnya episode
     epsilon = max(0.01, 1.0 / (episode * EPSILON_DECAY))
+    step_count = 0
 
     while True:
+        step_count += 1
         if doRender:
             env.render()
             
@@ -112,7 +115,7 @@ def runAlgorithmStep(env, episode, qTable, doRender):
         qTable[state][nextActionDiscretized] = updateQTable(qTable, state, nextActionDiscretized, reward, nextState)
         state = nextState
         
-        if done:
+        if done or step_count >= MAX_STEPS:
             break
             
     print(f"Score: {total_reward:.2f} | Epsilon: {epsilon:.3f}")
@@ -140,12 +143,8 @@ def plotEpisode(myGraph, mySubPlot, xval, yval, plotLine, movingAvgLine, epScore
         movingAvgLine.set_xdata(xval)
         movingAvgLine.set_ydata(moving_avg_padded)
         
-    mySubPlot.set_xlim([0, max(EPISODES, i)])
-    mySubPlot.set_ylim([min(-300.0, min(yval)), max(100.0, max(yval))])
-    
-    # Menggambar grafis ke layar tanpa memblokir
-    graph.draw()
-    graph.pause(0.001)
+    # Plot tidak diperbarui ke layar secara real-time untuk kompatibilitas Notebook
+    # Hasil akan disimpan dan ditampilkan di akhir program.
 
 # ==========================================
 # 6. Analisis Hasil & 7. Kesimpulan
@@ -158,8 +157,7 @@ def main():
     env = gym.make(ENV_NAME, hardcore=False, render_mode="human" if doRender else None)
     qTable = create_q_table()
 
-    # --- Setup Evaluasi Real-Time (Matplotlib) ---
-    graph.ion() # Mode interaktif dinyalakan agar grafis tampil tanpa blocking
+    # --- Setup Evaluasi (Matplotlib) ---
     myGraph = graph.figure(figsize=(10, 5))
     mySubPlot = myGraph.add_subplot()
     graph.xlabel("Episode #")
@@ -180,7 +178,10 @@ def main():
         print("\nTraining dihentikan secara manual oleh pengguna (Ctrl+C).")
 
     # --- Menyimpan & Menampilkan Analisis Akhir ---
-    graph.ioff()
+    mySubPlot.set_xlim([0, EPISODES])
+    if len(yval) > 0:
+        mySubPlot.set_ylim([min(-300.0, min(yval)), max(100.0, max(yval))])
+
     myGraph.savefig("./plot_hasil_training.png")
     print("\nGrafik diekspor sebagai plot_hasil_training.png")
     
